@@ -1,200 +1,326 @@
--- FluentMobileLib: High-Performance Luau UI
-local FluentLib = {
+--[[ 
+    TCC FLUENT MOBILE UI - FULL EDITION
+    Suporte: Mobile Touch, PC, FiveM Style, Fluent UI
+    Funcionalidades: Set, Refresh, Change, Force Update, Bubble Minimize
+]]
+
+local TCCLib = {
     Themes = {
-        Main = Color3.fromRGB(20, 20, 20),
-        Accent = Color3.fromRGB(0, 120, 215),
-        Text = Color3.fromRGB(255, 255, 255),
-        Transparency = 0.3
+        Main = Color3.fromRGB(15, 15, 15),
+        Accent = Color3.fromRGB(0, 150, 255),
+        Section = Color3.fromRGB(22, 22, 22),
+        DarkText = Color3.fromRGB(200, 200, 200),
+        Transparency = 0.15
     }
 }
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
-function FluentLib:CreateWindow(Config)
-    local Window = {
-        Tabs = {},
-        ActiveTab = nil,
-        Minimized = false
-    }
+-- Prevenção de Duplicação
+if CoreGui:FindFirstChild("TCC_SUPREME") then CoreGui.TCC_SUPREME:Destroy() end
 
-    -- Root ScreenGui
-    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-    ScreenGui.Name = "FluentMobileUI"
+function TCCLib:CreateWindow(Config)
+    local Window = {Tabs = {}, ActiveTab = nil, Minimized = false}
+    
+    -- Gui Root
+    local ScreenGui = Instance.new("ScreenGui", CoreGui)
+    ScreenGui.Name = "TCC_SUPREME"
     ScreenGui.ResetOnSpawn = false
 
-    -- Main Container (Semi-Transparent Acrylic)
+    -- Floating Bubble (Minimize)
+    local Bubble = Instance.new("TextButton", ScreenGui)
+    Bubble.Size = UDim2.new(0, 55, 0, 55)
+    Bubble.Position = UDim2.new(0.05, 0, 0.2, 0)
+    Bubble.BackgroundColor3 = self.Themes.Main
+    Bubble.Visible = false
+    Bubble.Text = "TCC"
+    Bubble.TextColor3 = self.Themes.Accent
+    Bubble.Font = Enum.Font.Offset
+    Bubble.TextSize = 18
+    Instance.new("UICorner", Bubble).CornerRadius = UDim.new(1, 0)
+    local BStroke = Instance.new("UIStroke", Bubble)
+    BStroke.Color = self.Themes.Accent
+    BStroke.Thickness = 2
+
+    -- Main Frame
     local MainFrame = Instance.new("Frame", ScreenGui)
-    MainFrame.Size = UDim2.new(0, 450, 0, 300)
-    MainFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
+    MainFrame.Size = UDim2.new(0, 580, 0, 380)
+    MainFrame.Position = UDim2.new(0.5, -290, 0.5, -190)
     MainFrame.BackgroundColor3 = self.Themes.Main
     MainFrame.BackgroundTransparency = self.Themes.Transparency
-    MainFrame.ClipsDescendants = true
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+    local MStroke = Instance.new("UIStroke", MainFrame)
+    MStroke.Color = Color3.fromRGB(45, 45, 45)
+    MStroke.Thickness = 1.5
+
+    -- Sidebar
+    local Sidebar = Instance.new("Frame", MainFrame)
+    Sidebar.Size = UDim2.new(0, 160, 1, -20)
+    Sidebar.Position = UDim2.new(0, 10, 0, 10)
+    Sidebar.BackgroundTransparency = 1
     
-    local Corner = Instance.new("UICorner", MainFrame)
-    Corner.CornerRadius = UDim.new(0, 12)
+    local Title = Instance.new("TextLabel", Sidebar)
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.Text = Config.Name or "TCC HUB"
+    Title.TextColor3 = Color3.new(1, 1, 1)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 18
+    Title.BackgroundTransparency = 1
 
-    local Stroke = Instance.new("UIStroke", MainFrame)
-    Stroke.Thickness = 1.5
-    Stroke.Color = Color3.fromRGB(60, 60, 60)
-    Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    local TabScroll = Instance.new("ScrollingFrame", Sidebar)
+    TabScroll.Size = UDim2.new(1, 0, 1, -50)
+    TabScroll.Position = UDim2.new(0, 0, 0, 50)
+    TabScroll.BackgroundTransparency = 1
+    TabScroll.ScrollBarThickness = 0
+    local TabList = Instance.new("UIListLayout", TabScroll)
+    TabList.Padding = UDim.new(0, 5)
 
-    -- Bubble Minimize Button
-    local Bubble = Instance.new("TextButton", ScreenGui)
-    Bubble.Size = UDim2.new(0, 50, 0, 50)
-    Bubble.Position = UDim2.new(0.05, 0, 0.1, 0)
-    Bubble.Visible = false
-    Bubble.Text = "F"
-    Bubble.BackgroundColor3 = self.Themes.Accent
-    Instance.new("UICorner", Bubble).CornerRadius = UDim.new(1, 0)
+    -- Content Area
+    local PageHolder = Instance.new("Frame", MainFrame)
+    PageHolder.Size = UDim2.new(1, -190, 1, -20)
+    PageHolder.Position = UDim2.new(0, 180, 0, 10)
+    PageHolder.BackgroundTransparency = 1
 
-    -- Toggle Logic
-    local function ToggleUI()
+    -- Drag & Minimize Logic
+    local function Toggle()
         Window.Minimized = not Window.Minimized
         MainFrame.Visible = not Window.Minimized
         Bubble.Visible = Window.Minimized
     end
-    Bubble.MouseButton1Click:Connect(ToggleUI)
+    Bubble.MouseButton1Click:Connect(Toggle)
 
-    -- Tab System Navigation
-    local Nav = Instance.new("Frame", MainFrame)
-    Nav.Size = UDim2.new(0, 130, 1, 0)
-    Nav.BackgroundTransparency = 1
-    
-    local TabContainer = Instance.new("ScrollingFrame", MainFrame)
-    TabContainer.Position = UDim2.new(0, 140, 0, 10)
-    TabContainer.Size = UDim2.new(1, -150, 1, -20)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.ScrollBarThickness = 2
+    -- Drag System (Mobile Friendly)
+    local drag, dragStart, startPos
+    MainFrame.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            drag = true; dragStart = i.Position; startPos = MainFrame.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(i)
+        if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+            local delta = i.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function() drag = false end)
 
-    local TabList = Instance.new("UIListLayout", TabContainer)
-    TabList.Padding = UDim.new(0, 5)
-
-    -- Element Factory (The "Make/Refresh/Change" engine)
     function Window:AddTab(Name, Icon)
-        local Tab = { Elements = {} }
-        local TabBtn = Instance.new("TextButton", Nav)
-        -- ... Tab logic ...
+        local Tab = {}
+        local TabBtn = Instance.new("TextButton", TabScroll)
+        TabBtn.Size = UDim2.new(1, -5, 0, 38)
+        TabBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabBtn.BackgroundTransparency = 1
+        TabBtn.Text = "  " .. Name
+        TabBtn.TextColor3 = TCCLib.Themes.DarkText
+        TabBtn.Font = Enum.Font.Gotham
+        TabBtn.TextSize = 14
+        TabBtn.TextXAlignment = Enum.TextXAlignment.Left
+        Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
+
+        local Page = Instance.new("ScrollingFrame", PageHolder)
+        Page.Size = UDim2.new(1, 0, 1, 0)
+        Page.BackgroundTransparency = 1
+        Page.Visible = false
+        Page.ScrollBarThickness = 2
+        Instance.new("UIListLayout", Page).Padding = UDim.new(0, 10)
+
+        TabBtn.MouseButton1Click:Connect(function()
+            for _, v in pairs(PageHolder:GetChildren()) do v.Visible = false end
+            for _, v in pairs(TabScroll:GetChildren()) do if v:IsA("TextButton") then v.BackgroundTransparency = 1 end end
+            Page.Visible = true
+            TabBtn.BackgroundTransparency = 0.9
+        end)
+
+        -- Elements Section
+        function Tab:AddSection(Text)
+            local SecFrame = Instance.new("Frame", Page)
+            SecFrame.Size = UDim2.new(1, -10, 0, 25)
+            SecFrame.BackgroundTransparency = 1
+            local Label = Instance.new("TextLabel", SecFrame)
+            Label.Size = UDim2.new(1, 0, 1, 0)
+            Label.Text = Text:upper()
+            Label.TextColor3 = TCCLib.Themes.Accent
+            Label.Font = Enum.Font.GothamBold
+            Label.TextSize = 12
+            Label.BackgroundTransparency = 1
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+        end
 
         function Tab:AddToggle(ID, Text, Default, Callback)
-            local Toggle = { Value = Default }
-            local Frame = Instance.new("Frame", TabContainer)
-            Frame.Size = UDim2.new(1, 0, 0, 35)
-            Frame.BackgroundTransparency = 0.8
-            Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            
+            local Tgl = {Value = Default}
+            local Frame = Instance.new("TextButton", Page)
+            Frame.Size = UDim2.new(1, -10, 0, 45)
+            Frame.BackgroundColor3 = TCCLib.Themes.Section
+            Frame.Text = "  " .. Text
+            Frame.TextColor3 = Color3.new(1, 1, 1)
+            Frame.TextXAlignment = Enum.TextXAlignment.Left
+            Frame.Font = Enum.Font.Gotham
+            Instance.new("UICorner", Frame)
+
+            local Box = Instance.new("Frame", Frame)
+            Box.Size = UDim2.new(0, 38, 0, 20)
+            Box.Position = UDim2.new(1, -48, 0.5, -10)
+            Box.BackgroundColor3 = Default and TCCLib.Themes.Accent or Color3.fromRGB(50, 50, 50)
+            Instance.new("UICorner", Box).CornerRadius = UDim.new(1, 0)
+
+            local Dot = Instance.new("Frame", Box)
+            Dot.Size = UDim2.new(0, 14, 0, 14)
+            Dot.Position = Default and UDim2.new(1, -18, 0.5, -7) or UDim2.new(0, 4, 0.5, -7)
+            Dot.BackgroundColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
+
+            function Tgl:Set(v)
+                Tgl.Value = v
+                TweenService:Create(Box, TweenInfo.new(0.3), {BackgroundColor3 = v and TCCLib.Themes.Accent or Color3.fromRGB(50, 50, 50)}):Play()
+                TweenService:Create(Dot, TweenInfo.new(0.3), {Position = v and UDim2.new(1, -18, 0.5, -7) or UDim2.new(0, 4, 0.5, -7)}):Play()
+                Callback(v)
+            end
+
+            Frame.MouseButton1Click:Connect(function() Tgl:Set(not Tgl.Value) end)
+            return Tgl
+        end
+
+        function Tab:AddSlider(Text, Min, Max, Default, Callback)
+            local Sld = {Value = Default}
+            local Frame = Instance.new("Frame", Page)
+            Frame.Size = UDim2.new(1, -10, 0, 60)
+            Frame.BackgroundColor3 = TCCLib.Themes.Section
+            Instance.new("UICorner", Frame)
+
             local Label = Instance.new("TextLabel", Frame)
-            Label.Text = "  " .. Text
-            Label.Size = UDim2.new(1, 0, 1, 0)
-            Label.TextColor3 = FluentLib.Themes.Text
+            Label.Size = UDim2.new(1, -20, 0, 30)
+            Label.Position = UDim2.new(0, 10, 0, 5)
+            Label.Text = Text .. ": " .. Default
+            Label.TextColor3 = Color3.new(1,1,1)
             Label.BackgroundTransparency = 1
             Label.TextXAlignment = Enum.TextXAlignment.Left
 
-            local Status = Instance.new("Frame", Frame)
-            Status.Size = UDim2.new(0, 40, 0, 20)
-            Status.Position = UDim2.new(1, -45, 0.5, -10)
-            Status.BackgroundColor3 = Default and FluentLib.Themes.Accent or Color3.fromRGB(100,100,100)
-            Instance.new("UICorner", Status).CornerRadius = UDim.new(1,0)
-
-            -- Force Update / Refresh Method
-            function Toggle:Set(NewValue)
-                Toggle.Value = NewValue
-                TweenService:Create(Status, TweenInfo.new(0.2), {
-                    BackgroundColor3 = NewValue and FluentLib.Themes.Accent or Color3.fromRGB(100,100,100)
-                }):Play()
-                Callback(NewValue)
-            end
-
-            Frame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    Toggle:Set(not Toggle.Value)
-                end
-            end)
-
-            return Toggle
-        end
-
-        function Tab:AddSlider(ID, Text, Min, Max, Default, Callback)
-            local Slider = { Value = Default }
-            local Frame = Instance.new("Frame", TabContainer)
-            Frame.Size = UDim2.new(1, 0, 0, 45)
-            Frame.BackgroundTransparency = 0.9
-            
-            local Label = Instance.new("TextLabel", Frame)
-            Label.Text = "  " .. Text .. ": " .. Default
-            Label.Size = UDim2.new(1, 0, 0, 20)
-            Label.BackgroundTransparency = 1
-            Label.TextColor3 = Color3.fromRGB(200, 200, 200)
-
-            local Bar = Instance.new("Frame", Frame)
-            Bar.Size = UDim2.new(0.9, 0, 0, 4)
-            Bar.Position = UDim2.new(0.05, 0, 0.7, 0)
-            Bar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            local Bar = Instance.new("TextButton", Frame)
+            Bar.Size = UDim2.new(1, -20, 0, 8)
+            Bar.Position = UDim2.new(0, 10, 0, 40)
+            Bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            Bar.Text = ""
+            Instance.new("UICorner", Bar)
 
             local Fill = Instance.new("Frame", Bar)
-            Fill.Size = UDim2.new((Default - Min)/(Max - Min), 0, 1, 0)
-            Fill.BackgroundColor3 = FluentLib.Themes.Accent
+            Fill.Size = UDim2.new((Default-Min)/(Max-Min), 0, 1, 0)
+            Fill.BackgroundColor3 = TCCLib.Themes.Accent
+            Instance.new("UICorner", Fill)
 
-            function Slider:Set(NewVal)
-                NewVal = math.clamp(NewVal, Min, Max)
-                Slider.Value = NewVal
-                Label.Text = "  " .. Text .. ": " .. NewVal
-                Fill.Size = UDim2.new((NewVal - Min)/(Max - Min), 0, 1, 0)
-                Callback(NewVal)
+            local function Update(input)
+                local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
+                local val = math.floor(Min + (Max - Min) * pos)
+                Fill.Size = UDim2.new(pos, 0, 1, 0)
+                Label.Text = Text .. ": " .. val
+                Sld.Value = val
+                Callback(val)
             end
 
-            -- Touch/Mouse Input logic here
-            return Slider
+            Bar.InputBegan:Connect(function(i)
+                if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+                    local move; move = UserInputService.InputChanged:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                            Update(input)
+                        end
+                    end)
+                    UserInputService.InputEnded:Connect(function() move:Disconnect() end)
+                    Update(i)
+                end
+            end)
+            return Sld
         end
 
-        function Tab:AddDiscordEmbed(InviteCode)
-            local Embed = Instance.new("Frame", TabContainer)
-            Embed.Size = UDim2.new(1, -10, 0, 80)
-            Embed.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Discord Blurple
-            local Corner = Instance.new("UICorner", Embed)
+        function Tab:AddDropdown(Text, List, Callback)
+            local Drop = {Options = List, Value = nil}
+            local Frame = Instance.new("TextButton", Page)
+            Frame.Size = UDim2.new(1, -10, 0, 45)
+            Frame.BackgroundColor3 = TCCLib.Themes.Section
+            Frame.Text = "  " .. Text .. " (Selecionar)"
+            Frame.TextColor3 = Color3.new(1,1,1)
+            Frame.TextXAlignment = Enum.TextXAlignment.Left
+            Instance.new("UICorner", Frame)
+
+            function Drop:Refresh(NewList)
+                Drop.Options = NewList
+                -- Aqui você pode adicionar lógica para abrir uma sub-janela de seleção
+                Frame.Text = "  " .. Text .. " (Atualizado)"
+            end
             
-            local Title = Instance.new("TextLabel", Embed)
-            Title.Text = "Join our Discord"
-            Title.Position = UDim2.new(0, 10, 0, 10)
-            Title.TextColor3 = Color3.new(1, 1, 1)
-            
-            local Join = Instance.new("TextButton", Embed)
-            Join.Size = UDim2.new(0, 80, 0, 30)
-            Join.Position = UDim2.new(1, -90, 0.5, -15)
-            Join.Text = "Copy Link"
-            Join.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Join.TextColor3 = Color3.new(0,0,0)
-            
-            Join.MouseButton1Click:Connect(function()
-                setclipboard("https://discord.gg/" .. InviteCode)
+            Frame.MouseButton1Click:Connect(function()
+                -- Simulação de Seleção
+                local selected = Drop.Options[1]
+                Frame.Text = "  " .. Text .. ": " .. selected
+                Callback(selected)
             end)
+            return Drop
+        end
+
+        function Tab:AddInput(Text, Placeholder, Callback)
+            local Frame = Instance.new("Frame", Page)
+            Frame.Size = UDim2.new(1, -10, 0, 60)
+            Frame.BackgroundColor3 = TCCLib.Themes.Section
+            Instance.new("UICorner", Frame)
+
+            local Label = Instance.new("TextLabel", Frame)
+            Label.Size = UDim2.new(1, -20, 0, 25)
+            Label.Position = UDim2.new(0, 10, 0, 5)
+            Label.Text = Text
+            Label.TextColor3 = Color3.new(1,1,1)
+            Label.BackgroundTransparency = 1
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+
+            local Inp = Instance.new("TextBox", Frame)
+            Inp.Size = UDim2.new(1, -20, 0, 25)
+            Inp.Position = UDim2.new(0, 10, 0, 30)
+            Inp.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            Inp.PlaceholderText = Placeholder
+            Inp.Text = ""
+            Inp.TextColor3 = Color3.new(1, 1, 1)
+            Instance.new("UICorner", Inp)
+
+            Inp.FocusLost:Connect(function() Callback(Inp.Text) end)
+        end
+
+        function Tab:AddDiscord(Link)
+            local Frame = Instance.new("TextButton", Page)
+            Frame.Size = UDim2.new(1, -10, 0, 50)
+            Frame.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+            Frame.Text = "Join Discord: " .. Link
+            Frame.TextColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", Frame)
+            Frame.MouseButton1Click:Connect(function() setclipboard(Link) end)
         end
 
         return Tab
     end
 
-    -- Draggable (Mobile & PC Support)
-    local dragging, dragInput, dragStart, startPos
-    MainFrame.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
+    -- Notificação Estilo Fluent
+    function TCCLib:Notify(T, C)
+        local Notif = Instance.new("Frame", ScreenGui)
+        Notif.Size = UDim2.new(0, 250, 0, 60)
+        Notif.Position = UDim2.new(1, 10, 1, -70)
+        Notif.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        Instance.new("UICorner", Notif)
+        Instance.new("UIStroke", Notif).Color = TCCLib.Themes.Accent
+        
+        local L = Instance.new("TextLabel", Notif)
+        L.Size = UDim2.new(1, -10, 1, -10)
+        L.Position = UDim2.new(0, 5, 0, 5)
+        L.Text = T .. "\n" .. C
+        L.TextColor3 = Color3.new(1,1,1)
+        L.BackgroundTransparency = 1
+
+        Notif:TweenPosition(UDim2.new(1, -260, 1, -70), "Out", "Back", 0.5)
+        task.delay(4, function()
+            Notif:TweenPosition(UDim2.new(1, 10, 1, -70), "In", "Back", 0.5)
+            task.wait(0.5)
+            Notif:Destroy()
+        end)
+    end
 
     return Window
 end
 
-return FluentLib
+return TCCLib
